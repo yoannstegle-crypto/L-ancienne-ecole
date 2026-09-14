@@ -1,0 +1,193 @@
+/* Mise en page papier / PDF.
+   Sur iPhone : bouton « Imprimer », puis pincement pour écarter l'aperçu et
+   « Enregistrer dans Fichiers » pour obtenir le PDF. */
+
+@page {
+  size: A4;
+  margin: 16mm 14mm;
+}
+
+/* Les graphiques héritent des variables de couleur : on les repasse au noir
+   sur blanc, sinon un iPhone en thème sombre imprimerait du texte pâle. */
+:root {
+  --encre: #000000;
+  --encre-douce: #444444;
+  --encre-tres-douce: #666666;
+  --surface: #ffffff;
+  --surface-2: #f4f4f4;
+  --bordure: #bbbbbb;
+  --graphe-gris: #c9ced6;
+  --graphe-piste: #e8ebef;
+  --graphe-trait: #2f6f8f;
+  --positif: #1d6b4a;
+  --negatif: #9c3f38;
+  --attention: #a9622c;
+}
+
+html,
+body {
+  background: #fff !important;
+  color: #000 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 10.5pt;
+}
+
+/* Tout ce qui relève de la navigation ou de l'édition disparaît. */
+.entete,
+.onglets,
+.segments,
+.bouton-flottant,
+.sans-impression,
+.toast,
+.feuille-fond,
+.actions-rapides,
+.alertes,
+.barre-filtres,
+.bouton,
+.lien,
+.chevron,
+.case,
+.pointage {
+  display: none !important;
+}
+
+.contenu {
+  display: block;
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: none;
+}
+
+.document,
+.carte {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  padding: 0 !important;
+  margin: 0 0 8mm;
+}
+
+.document__entete {
+  border-bottom: 1.5pt solid #000;
+  margin-bottom: 8mm;
+}
+
+.document__entete h1 {
+  font-size: 16pt;
+}
+
+.document__entete h2 {
+  font-size: 12pt;
+  color: #333 !important;
+}
+
+.document__section {
+  margin-bottom: 8mm;
+  /* Un tableau coupé en deux pages est illisible : on évite au maximum. */
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.document__section h3 {
+  font-size: 12pt;
+  border-bottom: 0.5pt solid #999;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.saut-page {
+  break-before: page;
+  page-break-before: always;
+}
+
+.zone-tableau {
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.tableau {
+  font-size: 9.5pt;
+  width: 100%;
+  break-inside: auto;
+}
+
+.tableau th,
+.tableau td {
+  border-bottom: 0.5pt solid #bbb;
+  padding: 3pt 4pt;
+  color: #000 !important;
+}
+
+.tableau thead {
+  display: table-header-group;
+}
+
+.tableau thead th {
+  color: #444 !important;
+  border-bottom: 1pt solid #666;
+}
+
+.tableau tfoot th {
+  border-top: 1pt solid #000;
+}
+
+.tableau tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.positif {
+  color: #1d6b4a !important;
+}
+
+.negatif {
+  color: #9c3f38 !important;
+}
+
+/* Les aplats de couleur des graphiques doivent survivre à l'impression. */
+.graphe,
+.pastille,
+.badge {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.graphe {
+  max-width: 100%;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.graphe-anneau {
+  max-width: 78mm;
+}
+
+.document__commentaire,
+.texte-libre,
+.definitions,
+.liste-numerotee {
+  color: #000 !important;
+}
+
+.resolution {
+  border-left: 2pt solid #444;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.signatures {
+  margin-top: 18mm;
+}
+
+.document__pied {
+  border-top: 0.5pt solid #999;
+  color: #444 !important;
+}
+
+.trio--encadre,
+.tableau--synthese {
+  background: #f4f4f4 !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}

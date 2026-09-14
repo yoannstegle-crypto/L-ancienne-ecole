@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Syndic L'Ancienne École</title>
+    <meta name="description" content="Gestion de copropriété : trésorerie, budget, appels de provisions et rapport annuel." />
+
+    <meta name="theme-color" content="#1d2733" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Syndic" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/icone.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./assets/icone-180.png" />
+    <link rel="stylesheet" href="./css/app.css" />
+    <link rel="stylesheet" href="./css/impression.css" media="print" />
+  </head>
+  <body>
+    <header id="entete" class="entete">
+      <div class="entete__ligne">
+        <h1 id="titre-vue" class="entete__titre">Tableau de bord</h1>
+        <div class="entete__outils">
+          <select id="selecteur-annee" class="selecteur-annee" aria-label="Exercice"></select>
+          <button id="bouton-reglages" class="bouton-icone" aria-label="Réglages">⚙</button>
+        </div>
+      </div>
+      <nav id="segments" class="segments" hidden></nav>
+    </header>
+
+    <main id="contenu" class="contenu" role="main"></main>
+
+    <nav id="onglets" class="onglets" aria-label="Navigation principale">
+      <button class="onglet onglet--actif" data-vue="accueil" data-route="#/accueil"><span aria-hidden="true">🏠</span>Accueil</button>
+      <button class="onglet" data-vue="compte" data-route="#/compte"><span aria-hidden="true">🧾</span>Compte</button>
+      <button class="onglet" data-vue="budget" data-route="#/budget"><span aria-hidden="true">📊</span>Budget</button>
+      <button class="onglet" data-vue="copro" data-route="#/copro"><span aria-hidden="true">👥</span>Copro</button>
+      <button class="onglet" data-vue="rapport" data-route="#/rapport"><span aria-hidden="true">📄</span>Rapport</button>
+    </nav>
+
+    <noscript>
+      <p style="padding: 24px; font-family: system-ui, sans-serif">
+        Cette application a besoin de JavaScript pour fonctionner.
+      </p>
+    </noscript>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>

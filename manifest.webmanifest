@@ -1,0 +1,25 @@
+{
+  "name": "Syndic L'Ancienne École",
+  "short_name": "Syndic",
+  "description": "Gestion de copropriété : trésorerie, budget, appels de provisions et rapport annuel.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f3f5",
+  "theme_color": "#1d2733",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "./assets/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "./assets/icone.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Scanner un relevé", "url": "./index.html#/scan" },
+    { "name": "Appels de provisions", "url": "./index.html#/copro/appels" },
+    { "name": "Bilan annuel", "url": "./index.html#/rapport" }
+  ]
+}
