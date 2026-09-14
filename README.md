@@ -37,7 +37,7 @@ générale imprimables.
 
 1. **Publier l'application.** Dans *Settings* → *Pages* → **Source : Deploy from a branch**,
    choisir la branche `main` et le dossier `/ (root)`, puis *Save*. Au bout d'une minute
-   l'application est servie sur **https://yoannstegle-crypto.github.io/l-ancienne-ecole/**.
+   l'application est servie sur **https://yoannstegle-crypto.github.io/L-ancienne-ecole/**.
 2. **Ouvrir cette adresse dans Safari** sur l'iPhone.
 3. **Bouton Partager → « Sur l'écran d'accueil ».** L'application s'installe comme une app :
    icône, plein écran, et fonctionnement hors ligne (sauf la lecture des relevés, qui a besoin
