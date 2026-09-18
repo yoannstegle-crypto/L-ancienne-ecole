@@ -1,7 +1,7 @@
 /* Service worker : l'application reste utilisable sans réseau (consultation,
    saisie, rapports). Seule la lecture d'un relevé par Gemini exige Internet. */
 
-const VERSION = 'syndic-v3';
+const VERSION = 'syndic-v5';
 
 const COQUE = [
   './',
@@ -20,6 +20,7 @@ const COQUE = [
   './js/gemini.js',
   './js/ui.js',
   './js/demo.js',
+  './js/maj.js',
   './js/drive.js',
   './js/sync.js',
   './js/views/dashboard.js',
@@ -40,6 +41,12 @@ self.addEventListener('install', (evenement) => {
       .then((cache) => Promise.all(COQUE.map((url) => cache.add(url).catch(() => null))))
       .then(() => self.skipWaiting()),
   );
+});
+
+// L'application peut demander à une version fraîchement installée de prendre
+// la main sans attendre — c'est le bouton « Mettre à jour » des réglages.
+self.addEventListener('message', (evenement) => {
+  if (evenement.data && evenement.data.type === 'prendre_la_main') self.skipWaiting();
 });
 
 self.addEventListener('activate', (evenement) => {

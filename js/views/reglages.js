@@ -5,6 +5,7 @@ import { listeModeles, modeleRecommande, testeCle } from '../gemini.js';
 import { dateLongue, echappe, euros, montantDepuisTexte, uid } from '../format.js';
 import { anneesConnues, arrondi, exerciceVierge, MODELE_MESSAGE_GROUPE, MODELE_MESSAGE_PROVISION, totaux, VERSION_APPLI } from '../model.js';
 import { chargeJeuDemo } from '../demo.js';
+import { chercheMiseAJour } from '../maj.js';
 import { connecte as connecteDrive, deconnecte as deconnecteDrive, etatSync, lienFichier, synchronise } from '../sync.js';
 import { exporteJSON, importeJSON, joursDepuisSauvegarde, maj, reinitialise } from '../store.js';
 import { confirme, delegue, feuille, formulaire, toast } from '../ui.js';
@@ -496,6 +497,9 @@ export function rendu(conteneur, ctx) {
 
     <section class="carte carte--apropos">
       <p><strong>Syndic L'Ancienne École</strong> — version ${VERSION_APPLI}</p>
+      <div class="boutons-ligne">
+        <button class="bouton" data-maj>Rechercher une mise à jour</button>
+      </div>
       <p class="note">${
         syncActive
           ? "Vos données sont stockées dans ce navigateur et dans votre Google Drive personnel. Les photos de relevés sont transmises à l'API Gemini le temps de l'analyse. Aucun autre serveur n'y a accès."
@@ -525,6 +529,16 @@ export function rendu(conteneur, ctx) {
     } catch (err) {
       toast(`Import impossible : ${err.message}`, 'erreur');
     }
+  });
+
+  delegue(conteneur, 'click', '[data-maj]', async (e, bouton) => {
+    bouton.disabled = true;
+    toast('Recherche d’une nouvelle version…');
+    const resultat = await chercheMiseAJour();
+    bouton.disabled = false;
+    if (resultat === 'mise_a_jour') toast('Nouvelle version trouvée, rechargement…');
+    else if (resultat === 'a_jour') toast('Vous avez déjà la dernière version');
+    else toast('Vérification impossible hors ligne', 'erreur');
   });
 
   delegue(conteneur, 'click', '[data-drive-config]', () => configureDrive(db));

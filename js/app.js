@@ -5,6 +5,7 @@ import { anneesConnues } from './model.js';
 import { abonne, charger, maj } from './store.js';
 import { echappe } from './format.js';
 import { abonneSync, programmeSync, reprend } from './sync.js';
+import { memoriseEnregistrement, surveilleMisesAJour } from './maj.js';
 
 import * as vueAccueil from './views/dashboard.js';
 import * as vueCompte from './views/compte.js';
@@ -153,21 +154,19 @@ function installe() {
   reprend();
 
   if ('serviceWorker' in navigator) {
-    // Y avait-il déjà une version installée ? Si oui, la prise de contrôle
-    // d'une nouvelle signifie qu'une mise à jour vient d'arriver, et la page
-    // doit être rechargée pour l'exécuter — sans quoi l'utilisateur continue
-    // d'utiliser l'ancien code sans le savoir.
-    const versionPrecedente = !!navigator.serviceWorker.controller;
-    let rechargementEnCours = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!versionPrecedente || rechargementEnCours) return;
-      rechargementEnCours = true;
-      window.location.reload();
-    });
+    surveilleMisesAJour();
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {
-        /* hors ligne non disponible, sans conséquence sur le reste */
-      });
+      navigator.serviceWorker
+        .register('./sw.js')
+        .then((reg) => {
+          memoriseEnregistrement(reg);
+          // Vérification à chaque lancement : sur iOS, sans cet appel, une app
+          // installée peut rester des semaines sur une version périmée.
+          return reg.update().catch(() => {});
+        })
+        .catch(() => {
+          /* hors ligne non disponible, sans conséquence sur le reste */
+        });
     });
   }
 }
