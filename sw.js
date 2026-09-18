@@ -1,7 +1,7 @@
 /* Service worker : l'application reste utilisable sans réseau (consultation,
    saisie, rapports). Seule la lecture d'un relevé par Gemini exige Internet. */
 
-const VERSION = 'syndic-v2';
+const VERSION = 'syndic-v3';
 
 const COQUE = [
   './',
@@ -74,19 +74,36 @@ self.addEventListener('fetch', (evenement) => {
     return;
   }
 
-  // Ressources : réponse immédiate depuis le cache, rafraîchie en arrière-plan.
+  // Images et icônes : le cache d'abord, elles ne changent pour ainsi dire jamais.
+  if (/\.(png|svg|jpg|jpeg|webp|ico)$/i.test(url.pathname)) {
+    evenement.respondWith(
+      caches.match(requete).then(
+        (enCache) =>
+          enCache ||
+          fetch(requete).then((reponse) => {
+            if (reponse && reponse.status === 200 && reponse.type === 'basic') {
+              const copie = reponse.clone();
+              caches.open(VERSION).then((cache) => cache.put(requete, copie));
+            }
+            return reponse;
+          }),
+      ),
+    );
+    return;
+  }
+
+  // Code et styles : le réseau d'abord, le cache seulement en secours.
+  // Servir le cache en priorité faisait tourner l'ancienne version de
+  // l'application pendant des jours après une mise à jour.
   evenement.respondWith(
-    caches.match(requete).then((enCache) => {
-      const reseau = fetch(requete)
-        .then((reponse) => {
-          if (reponse && reponse.status === 200 && reponse.type === 'basic') {
-            const copie = reponse.clone();
-            caches.open(VERSION).then((cache) => cache.put(requete, copie));
-          }
-          return reponse;
-        })
-        .catch(() => enCache);
-      return enCache || reseau;
-    }),
+    fetch(requete)
+      .then((reponse) => {
+        if (reponse && reponse.status === 200 && reponse.type === 'basic') {
+          const copie = reponse.clone();
+          caches.open(VERSION).then((cache) => cache.put(requete, copie));
+        }
+        return reponse;
+      })
+      .catch(() => caches.match(requete)),
   );
 });

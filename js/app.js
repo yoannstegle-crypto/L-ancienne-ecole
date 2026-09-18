@@ -153,6 +153,17 @@ function installe() {
   reprend();
 
   if ('serviceWorker' in navigator) {
+    // Y avait-il déjà une version installée ? Si oui, la prise de contrôle
+    // d'une nouvelle signifie qu'une mise à jour vient d'arriver, et la page
+    // doit être rechargée pour l'exécuter — sans quoi l'utilisateur continue
+    // d'utiliser l'ancien code sans le savoir.
+    const versionPrecedente = !!navigator.serviceWorker.controller;
+    let rechargementEnCours = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!versionPrecedente || rechargementEnCours) return;
+      rechargementEnCours = true;
+      window.location.reload();
+    });
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js').catch(() => {
         /* hors ligne non disponible, sans conséquence sur le reste */

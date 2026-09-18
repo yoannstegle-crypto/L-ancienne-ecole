@@ -3,7 +3,7 @@
 
 import { listeModeles, modeleRecommande, testeCle } from '../gemini.js';
 import { dateLongue, echappe, euros, montantDepuisTexte, uid } from '../format.js';
-import { anneesConnues, arrondi, exerciceVierge, MODELE_MESSAGE_GROUPE, MODELE_MESSAGE_PROVISION, totaux } from '../model.js';
+import { anneesConnues, arrondi, exerciceVierge, MODELE_MESSAGE_GROUPE, MODELE_MESSAGE_PROVISION, totaux, VERSION_APPLI } from '../model.js';
 import { chargeJeuDemo } from '../demo.js';
 import { connecte as connecteDrive, deconnecte as deconnecteDrive, etatSync, lienFichier, synchronise } from '../sync.js';
 import { exporteJSON, importeJSON, joursDepuisSauvegarde, maj, reinitialise } from '../store.js';
@@ -495,7 +495,7 @@ export function rendu(conteneur, ctx) {
     </section>
 
     <section class="carte carte--apropos">
-      <p><strong>Syndic L'Ancienne École</strong> — gestion de copropriété hors ligne.</p>
+      <p><strong>Syndic L'Ancienne École</strong> — version ${VERSION_APPLI}</p>
       <p class="note">${
         syncActive
           ? "Vos données sont stockées dans ce navigateur et dans votre Google Drive personnel. Les photos de relevés sont transmises à l'API Gemini le temps de l'analyse. Aucun autre serveur n'y a accès."

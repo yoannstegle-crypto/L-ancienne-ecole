@@ -5,6 +5,10 @@ import { anneeDe, normalise, uid } from './format.js';
 
 export const VERSION_DONNEES = 1;
 
+// Affichée dans les réglages : permet de vérifier d'un coup d'oeil quelle
+// version tourne réellement sur l'appareil, le cache pouvant en retarder une.
+export const VERSION_APPLI = '2026.09.18';
+
 /** Palette des catégories : lisible à l'écran comme à l'impression. */
 export const CATEGORIES_DEFAUT = [
   { code: 'assurance', nom: 'Assurance immeuble', type: 'depense', couleur: '#2f6f8f' },
