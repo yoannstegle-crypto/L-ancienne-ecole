@@ -96,7 +96,12 @@ export function connecte(clientId, { interactif = true } = {}) {
 
 function messageErreur(reponse) {
   const code = reponse.error || reponse.type || '';
-  if (/popup_closed|popup_failed|user_cancel|access_denied/i.test(code)) return 'Connexion annulée.';
+  if (/popup_closed|popup_failed|user_cancel/i.test(code)) return 'Connexion annulée.';
+  // Google renvoie aussi access_denied quand le compte n'est pas inscrit comme
+  // testeur : ne pas l'annoncer comme une annulation de l'utilisateur.
+  if (/access_denied/i.test(code)) {
+    return "Google a refusé la connexion. Si vous n'avez rien annulé, ajoutez votre adresse Gmail dans « Utilisateurs tests » de l'écran de consentement OAuth, ou publiez l'application.";
+  }
   if (/invalid_client|idpiframe|origin/i.test(code)) {
     return "Identifiant client refusé par Google. Vérifiez qu'il est bien du type « Application Web » et que l'adresse du site figure dans les origines autorisées.";
   }
