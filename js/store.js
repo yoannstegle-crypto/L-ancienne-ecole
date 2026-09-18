@@ -21,6 +21,8 @@ function migre(donnees) {
   ['exercices', 'categories', 'lots', 'budget', 'operations', 'factures', 'appels', 'rapports'].forEach((cle) => {
     if (!Array.isArray(sortie[cle])) sortie[cle] = base[cle];
   });
+  sortie.sync = { ...base.sync, ...(donnees.sync || {}) };
+  sortie.revision = Number(donnees.revision) || 0;
   if (!sortie.exercices.length) sortie.exercices = base.exercices;
   sortie.version = VERSION_DONNEES;
   return sortie;
@@ -51,10 +53,14 @@ export function etat() {
  * Applique une modification puis persiste et prévient les vues.
  * `modifier(db)` reçoit l'objet courant et le mute directement.
  */
-export function maj(modifier, { silencieux = false } = {}) {
+export function maj(modifier, { silencieux = false, sansRevision = false } = {}) {
   const courant = etat();
   modifier(courant);
   courant.modifieLe = new Date().toISOString();
+  // `sansRevision` sert aux écritures techniques (résultat d'une synchro,
+  // horodatage d'une sauvegarde) qui ne doivent pas se faire passer pour une
+  // modification de l'utilisateur, sous peine de conflit permanent.
+  if (!sansRevision) courant.revision = (Number(courant.revision) || 0) + 1;
   persiste(courant);
   if (!silencieux) notifie();
   return courant;
@@ -114,9 +120,12 @@ export function exporteJSON() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
-  maj((d) => {
-    d.sauvegardeLe = new Date().toISOString();
-  });
+  maj(
+    (d) => {
+      d.sauvegardeLe = new Date().toISOString();
+    },
+    { sansRevision: true },
+  );
 }
 
 export async function importeJSON(fichier, { fusion = false } = {}) {
@@ -148,6 +157,14 @@ export function joursDepuisSauvegarde() {
   const d = etat().sauvegardeLe;
   if (!d) return null;
   return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+}
+
+/** Remplace l'intégralité des données (utilisé par la synchronisation Drive). */
+export function remplaceTout(donnees) {
+  db = migre(donnees);
+  persiste(db);
+  notifie();
+  return db;
 }
 
 export function reinitialise() {

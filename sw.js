@@ -1,7 +1,7 @@
 /* Service worker : l'application reste utilisable sans réseau (consultation,
    saisie, rapports). Seule la lecture d'un relevé par Gemini exige Internet. */
 
-const VERSION = 'syndic-v1';
+const VERSION = 'syndic-v2';
 
 const COQUE = [
   './',
@@ -20,6 +20,8 @@ const COQUE = [
   './js/gemini.js',
   './js/ui.js',
   './js/demo.js',
+  './js/drive.js',
+  './js/sync.js',
   './js/views/dashboard.js',
   './js/views/compte.js',
   './js/views/budget.js',

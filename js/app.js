@@ -4,6 +4,7 @@
 import { anneesConnues } from './model.js';
 import { abonne, charger, maj } from './store.js';
 import { echappe } from './format.js';
+import { abonneSync, programmeSync, reprend } from './sync.js';
 
 import * as vueAccueil from './views/dashboard.js';
 import * as vueCompte from './views/compte.js';
@@ -124,7 +125,13 @@ function installe() {
   });
 
   window.addEventListener('hashchange', dessine);
-  abonne(() => dessine());
+  abonne(() => {
+    dessine();
+    // Toute modification part vers le Drive après une courte pause, le temps
+    // que l'utilisateur finisse sa saisie.
+    programmeSync();
+  });
+  abonneSync(() => dessine());
 
   // Ombre portée de l'en-tête au défilement : repère visuel discret.
   let dernierY = 0;
@@ -140,6 +147,10 @@ function installe() {
 
   if (!location.hash) location.hash = '#/accueil';
   dessine();
+
+  // Si la synchronisation était active, on récupère d'abord l'état du Drive :
+  // l'appareil peut avoir pris du retard depuis la dernière ouverture.
+  reprend();
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

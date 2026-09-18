@@ -62,11 +62,66 @@ un serveur intermédiaire, il n'y en a aucun.
 
 ---
 
+## Synchronisation Google Drive (facultatif)
+
+Sans configuration, les données ne vivent que dans le navigateur de l'appareil. En reliant
+l'application à un Google Drive, on obtient trois choses d'un coup : les mêmes données sur le
+téléphone et sur l'ordinateur, une sauvegarde continue, et aucun fichier à exporter à la main.
+
+**L'application ne voit jamais votre mot de passe.** L'authentification se fait chez Google, qui
+renvoie un jeton valable une heure. La permission demandée est `drive.file` : l'application
+n'accède qu'aux fichiers qu'elle a elle-même créés — le reste du Drive lui reste invisible.
+
+### Créer l'identifiant client, une fois pour toutes
+
+Sur [console.cloud.google.com](https://console.cloud.google.com), avec le compte Google dont vous
+voulez utiliser le Drive :
+
+1. **Créer un projet** — n'importe quel nom, par exemple « Syndic ».
+2. **API et services → Bibliothèque** → chercher **Google Drive API** → **Activer**.
+3. **API et services → Écran de consentement OAuth** :
+   - type **Externe**, puis **Créer**
+   - nom de l'application, votre adresse e-mail en contact, **Enregistrer**
+   - à l'étape **Utilisateurs test**, ajouter votre propre adresse Gmail
+   - laisser l'application en mode **Test** : c'est suffisant, et cela évite la procédure de
+     validation de Google. La permission `drive.file` n'étant pas considérée comme sensible,
+     rien d'autre n'est exigé.
+4. **API et services → Identifiants → Créer des identifiants → ID client OAuth** :
+   - type d'application : **Application Web**
+   - dans **Origines JavaScript autorisées**, ajouter l'adresse exacte du site, par exemple
+     `https://yoannstegle-crypto.github.io` — le domaine seul, sans le chemin ni barre finale
+   - **Créer**, puis copier l'**ID client** (il se termine par `.apps.googleusercontent.com`)
+
+Cet identifiant n'est pas un secret : il est conçu pour figurer dans une page web publique. Ce
+qui protège les données, c'est la connexion Google, pas lui.
+
+### Activer dans l'application
+
+**⚙ Réglages → Google Drive → Configurer**, coller l'ID client, puis **Se connecter à Google**.
+Un fichier `syndic-ancienne-ecole.json` apparaît à la racine du Drive. Les modifications y
+partent automatiquement quelques secondes après chaque saisie.
+
+### Comment les conflits sont traités
+
+Chaque modification fait avancer un compteur de révision, et l'application retient la révision
+de la dernière synchronisation réussie. En comparant trois nombres — local, distant, dernière
+synchro — elle sait qui a bougé.
+
+Si les deux côtés ont été modifiés depuis la dernière synchro, **rien n'est écrit** : une fenêtre
+affiche les deux versions avec leur date et demande laquelle conserver. Jamais d'écrasement
+silencieux.
+
+En cas de doute, exportez d'abord une sauvegarde : elle fige une copie que la synchronisation ne
+touchera pas.
+
+---
+
 ## Vos données, et comment ne pas les perdre
 
-Tout est stocké en local (`localStorage`), sur l'appareil. **Aucun compte, aucun serveur, aucune
-base de données.** C'est ce qui rend l'application gratuite et privée — et c'est aussi son point
-faible : effacer les données de Safari efface la comptabilité.
+Tout est stocké en local (`localStorage`), sur l'appareil. **Aucun serveur, aucune base de
+données.** C'est ce qui rend l'application gratuite et privée — et c'est aussi son point faible
+tant que la synchronisation Drive n'est pas activée : effacer les données de Safari efface la
+comptabilité.
 
 **Exportez une sauvegarde régulièrement** : Réglages → *Exporter une sauvegarde* produit un
 fichier JSON à ranger dans Fichiers ou iCloud. L'accueil affiche une alerte passé trois semaines
@@ -101,6 +156,8 @@ js/model.js              modèle métier et tous les calculs
 js/format.js             montants, dates, téléphones, lecture des montants saisis
 js/charts.js             graphiques SVG écrits à la main
 js/gemini.js             appel de l'API Gemini et normalisation des réponses
+js/drive.js              authentification Google et lecture/écriture dans le Drive
+js/sync.js               comparaison des révisions, conflits, envoi différé
 js/ui.js                 feuilles modales, formulaires, notifications
 js/demo.js               jeu d'essai (copropriété fictive de 6 lots)
 js/views/                un module par écran

@@ -5,6 +5,7 @@ import { testeCle } from '../gemini.js';
 import { dateLongue, echappe, euros, montantDepuisTexte, uid } from '../format.js';
 import { anneesConnues, arrondi, exerciceVierge, MODELE_MESSAGE_GROUPE, MODELE_MESSAGE_PROVISION, totaux } from '../model.js';
 import { chargeJeuDemo } from '../demo.js';
+import { connecte as connecteDrive, deconnecte as deconnecteDrive, etatSync, lienFichier, synchronise } from '../sync.js';
 import { exporteJSON, importeJSON, joursDepuisSauvegarde, maj, reinitialise } from '../store.js';
 import { confirme, delegue, feuille, formulaire, toast } from '../ui.js';
 
@@ -214,27 +215,155 @@ function gereCategories(db) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Synchronisation Google Drive
+// ---------------------------------------------------------------------------
+
+function depuis(iso) {
+  if (!iso) return 'jamais';
+  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return "à l'instant";
+  if (minutes < 60) return `il y a ${minutes} min`;
+  const heures = Math.floor(minutes / 60);
+  if (heures < 24) return `il y a ${heures} h`;
+  const jours = Math.floor(heures / 24);
+  return `il y a ${jours} jour${jours > 1 ? 's' : ''}`;
+}
+
+async function configureDrive(db) {
+  const donnees = await formulaire({
+    titre: 'Connexion à Google Drive',
+    valider: 'Enregistrer',
+    champs: [
+      {
+        cle: 'googleClientId',
+        label: 'Identifiant client Google',
+        type: 'text',
+        valeur: db.parametres.googleClientId,
+        placeholder: '1234567890-abc….apps.googleusercontent.com',
+        aide: "Se termine par .apps.googleusercontent.com. Ce n'est pas un secret : il est prévu pour figurer dans une page web.",
+      },
+    ],
+    apres: `<p class="champ__aide champ__aide--bloc">Pour l'obtenir : console.cloud.google.com → créer un projet → « API et services » → activer l'<b>API Google Drive</b> → « Identifiants » → créer un <b>ID client OAuth</b> de type <b>Application Web</b>, en ajoutant <b>${echappe(window.location.origin)}</b> dans les origines JavaScript autorisées. La marche à suivre détaillée est dans le README du dépôt.</p>`,
+  });
+  if (!donnees) return;
+  maj((d) => {
+    d.parametres.googleClientId = donnees.googleClientId.trim();
+  });
+  toast(donnees.googleClientId.trim() ? 'Identifiant enregistré' : 'Identifiant effacé');
+}
+
+/** Traite le résultat d'une synchro, y compris le cas du conflit. */
+async function traite(resultat) {
+  if (!resultat) return;
+  if (resultat.etat === 'conflit') {
+    const choix = await feuille({
+      titre: 'Deux versions différentes',
+      contenu: `<p class="texte-modale">Les données ont été modifiées des deux côtés depuis la dernière synchronisation. Choisissez celle à conserver — l'autre sera écrasée.</p>
+        <ul class="liste">
+          <li class="liste__ligne">
+            <div class="liste__principal"><span class="liste__titre">Cet appareil</span>
+            <span class="liste__sous">modifié ${echappe(depuis(resultat.local.modifieLe))} · révision ${resultat.local.revision}</span></div>
+          </li>
+          <li class="liste__ligne">
+            <div class="liste__principal"><span class="liste__titre">Google Drive</span>
+            <span class="liste__sous">modifié ${echappe(depuis(resultat.distant.modifieLe))} · révision ${resultat.distant.revision}</span></div>
+          </li>
+        </ul>
+        <p class="note note--alerte">Dans le doute, annulez et exportez d'abord une sauvegarde : elle vous permettra de récupérer la version perdue.</p>`,
+      actions: [
+        { label: 'Annuler', style: 'discret', valeur: null },
+        { label: 'Garder le Drive', style: 'discret', valeur: 'distant' },
+        { label: 'Garder cet appareil', style: 'primaire', valeur: 'local' },
+      ],
+    });
+    if (!choix) return;
+    return traite(await synchronise({ interactif: true, resolution: choix }));
+  }
+  if (resultat.etat === 'erreur') {
+    toast(resultat.message, 'erreur');
+    return;
+  }
+  const messages = {
+    cree: 'Fichier créé dans votre Drive',
+    envoye: 'Données envoyées vers le Drive',
+    recu: 'Données récupérées depuis le Drive',
+    a_jour: 'Déjà à jour',
+  };
+  if (messages[resultat.etat]) toast(messages[resultat.etat]);
+  return undefined;
+}
+
+function carteDrive(db) {
+  const sync = etatSync();
+  const erreur = (db.sync || {}).derniereErreur;
+
+  if (!sync.configure) {
+    return `<section class="carte">
+      <h2 class="carte__titre">Google Drive</h2>
+      <p class="note">Vos données ne vivent aujourd'hui que dans ce navigateur. En les reliant à votre Drive, vous les retrouvez sur le téléphone comme sur l'ordinateur, et la sauvegarde devient automatique.</p>
+      <p class="note">Il faut d'abord créer un identifiant client chez Google — une dizaine de minutes, une seule fois.</p>
+      <div class="boutons-ligne">
+        <button class="bouton bouton--primaire" data-drive-config>Configurer</button>
+      </div>
+    </section>`;
+  }
+
+  if (!sync.actif) {
+    return `<section class="carte">
+      <h2 class="carte__titre">Google Drive</h2>
+      <p class="note">Identifiant enregistré. Connectez-vous pour activer la synchronisation.</p>
+      ${erreur ? `<p class="message-erreur">${echappe(erreur)}</p>` : ''}
+      <div class="boutons-ligne">
+        <button class="bouton bouton--primaire" data-drive-connexion>Se connecter à Google</button>
+        <button class="bouton" data-drive-config>Modifier l'identifiant</button>
+      </div>
+    </section>`;
+  }
+
+  return `<section class="carte">
+    <h2 class="carte__titre">Google Drive<span>${sync.enAttente ? 'modifications en attente' : 'à jour'}</span></h2>
+    <div class="trio trio--encadre">
+      <div><span class="trio__label">Dernière synchro</span><span class="trio__valeur">${echappe(depuis(sync.dateSync))}</span></div>
+      <div><span class="trio__label">État</span><span class="trio__valeur ${sync.enAttente ? 'negatif' : 'positif'}">${sync.enAttente ? 'à envoyer' : 'synchronisé'}</span></div>
+    </div>
+    ${erreur ? `<p class="message-erreur">${echappe(erreur)}</p>` : ''}
+    <p class="note">Les modifications partent automatiquement quelques secondes après chaque saisie.</p>
+    <div class="boutons-ligne">
+      <button class="bouton bouton--primaire" data-drive-sync>Synchroniser maintenant</button>
+      ${sync.fichierId ? `<a class="bouton" href="${lienFichier(sync.fichierId)}" target="_blank" rel="noopener">Voir le fichier</a>` : ''}
+      <button class="bouton bouton--danger-discret" data-drive-deconnexion>Se déconnecter</button>
+    </div>
+  </section>`;
+}
+
 export function rendu(conteneur, ctx) {
   const { db } = ctx;
   const jours = joursDepuisSauvegarde();
   const annees = anneesConnues(db);
+  const syncActive = etatSync().actif;
 
   conteneur.innerHTML = `
     <section class="carte">
       <h2 class="carte__titre">Sauvegarde</h2>
-      <p class="note ${jours === null || jours > 21 ? 'note--alerte' : ''}">
+      <p class="note ${!syncActive && (jours === null || jours > 21) ? 'note--alerte' : ''}">
         ${
-          db.sauvegardeLe
-            ? `Dernière sauvegarde exportée le ${echappe(dateLongue(db.sauvegardeLe.slice(0, 10)))}${jours !== null ? ` (il y a ${jours} jour${jours > 1 ? 's' : ''})` : ''}.`
-            : "Aucune sauvegarde n'a encore été exportée."
+          syncActive
+            ? 'Vos données sont sauvegardées en continu dans Google Drive. Un export reste utile avant une manipulation risquée : il fige une copie que rien ne viendra écraser.'
+            : `${
+                db.sauvegardeLe
+                  ? `Dernière sauvegarde exportée le ${echappe(dateLongue(db.sauvegardeLe.slice(0, 10)))}${jours !== null ? ` (il y a ${jours} jour${jours > 1 ? 's' : ''})` : ''}.`
+                  : "Aucune sauvegarde n'a encore été exportée."
+              } Les données vivent dans la mémoire de ce navigateur : exportez un fichier régulièrement et rangez-le dans Fichiers ou iCloud.`
         }
-        Les données vivent dans la mémoire de ce navigateur : exportez un fichier régulièrement et rangez-le dans Fichiers ou iCloud.
       </p>
       <div class="boutons-ligne">
         <button class="bouton bouton--primaire" data-exporter>⬇︎ Exporter une sauvegarde</button>
         <label class="bouton">⬆︎ Restaurer<input type="file" accept="application/json,.json" hidden data-importer></label>
       </div>
     </section>
+
+    ${carteDrive(db)}
 
     <section class="carte carte--liste">
       <h2 class="carte__titre">Syndic</h2>
@@ -315,7 +444,11 @@ export function rendu(conteneur, ctx) {
 
     <section class="carte carte--apropos">
       <p><strong>Syndic L'Ancienne École</strong> — gestion de copropriété hors ligne.</p>
-      <p class="note">Aucune donnée n'est envoyée sur un serveur, à l'exception des photos de relevés transmises à l'API Gemini au moment de l'analyse.</p>
+      <p class="note">${
+        syncActive
+          ? "Vos données sont stockées dans ce navigateur et dans votre Google Drive personnel. Les photos de relevés sont transmises à l'API Gemini le temps de l'analyse. Aucun autre serveur n'y a accès."
+          : "Aucune donnée n'est envoyée sur un serveur, à l'exception des photos de relevés transmises à l'API Gemini au moment de l'analyse."
+      }</p>
     </section>
   `;
 
@@ -340,6 +473,26 @@ export function rendu(conteneur, ctx) {
     } catch (err) {
       toast(`Import impossible : ${err.message}`, 'erreur');
     }
+  });
+
+  delegue(conteneur, 'click', '[data-drive-config]', () => configureDrive(db));
+  delegue(conteneur, 'click', '[data-drive-connexion]', async () => {
+    toast('Ouverture de la fenêtre Google…');
+    try {
+      await traite(await connecteDrive({ interactif: true }));
+    } catch (err) {
+      toast(err.message || 'Connexion impossible', 'erreur');
+    }
+  });
+  delegue(conteneur, 'click', '[data-drive-sync]', async () => {
+    await traite(await synchronise({ interactif: true }));
+  });
+  delegue(conteneur, 'click', '[data-drive-deconnexion]', async () => {
+    const ok = await confirme(
+      'Se déconnecter de Google Drive ? Les données restent sur cet appareil et dans le Drive, mais elles ne seront plus synchronisées.',
+      { valider: 'Se déconnecter' },
+    );
+    if (ok) deconnecteDrive();
   });
 
   delegue(conteneur, 'click', '[data-identite]', () => editeIdentite(db));

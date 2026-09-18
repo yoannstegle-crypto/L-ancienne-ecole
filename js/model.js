@@ -52,6 +52,17 @@ export function baseVierge(annee = new Date().getFullYear()) {
     version: VERSION_DONNEES,
     modifieLe: new Date().toISOString(),
     sauvegardeLe: null,
+    // Incrémenté à chaque modification : c'est lui qui permet de savoir, au
+    // moment de synchroniser, qui du téléphone ou du Drive a la version la
+    // plus récente — une date seule serait trop fragile entre deux appareils.
+    revision: 0,
+    sync: {
+      actif: false,
+      fichierId: null,
+      revisionSynchronisee: 0,
+      dateSync: null,
+      derniereErreur: null,
+    },
     parametres: {
       syndic: "Syndic L'Ancienne École",
       adresse: '',
@@ -61,6 +72,7 @@ export function baseVierge(annee = new Date().getFullYear()) {
       exerciceCourant: annee,
       cleGemini: '',
       modeleGemini: 'gemini-2.5-flash',
+      googleClientId: '',
       messageProvision: MODELE_MESSAGE_PROVISION,
       messageGroupe: MODELE_MESSAGE_GROUPE,
     },

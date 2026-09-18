@@ -14,6 +14,7 @@ import {
   totaux,
 } from '../model.js';
 import { joursDepuisSauvegarde } from '../store.js';
+import { etatSync } from '../sync.js';
 import { delegue } from '../ui.js';
 
 export function rendu(conteneur, ctx) {
@@ -51,12 +52,26 @@ export function rendu(conteneur, ctx) {
   if (t.solde < 0) {
     alertes.push({ route: '#/compte', icone: '⚠️', titre: 'Solde du compte négatif', detail: euros(t.solde), style: 'danger' });
   }
-  if (jours === null || jours > 21) {
+  // Rien à sauvegarder tant que rien n'a été saisi : inutile d'alarmer sur une
+  // application vide.
+  const vierge = !db.operations.length && !db.lots.length && !db.budget.length;
+  const sync = etatSync();
+  const erreurSync = (db.sync || {}).derniereErreur;
+
+  if (sync.actif && erreurSync) {
+    alertes.push({
+      route: '#/reglages',
+      icone: '☁️',
+      titre: 'Synchronisation Drive en échec',
+      detail: 'Voir',
+      style: 'attention',
+    });
+  } else if (!sync.actif && !vierge && (jours === null || jours > 21)) {
     alertes.push({
       route: '#/reglages',
       icone: '💾',
       titre: jours === null ? 'Aucune sauvegarde exportée' : `Dernière sauvegarde il y a ${jours} jours`,
-      detail: 'Exporter',
+      detail: 'Sauvegarder',
       style: 'info',
     });
   }
