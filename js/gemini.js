@@ -89,8 +89,70 @@ Catégorie à choisir strictement dans cette liste :
 ${listeCategories}${listeLots}`;
 }
 
-export async function litReleve({ images, cle, modele = 'gemini-2.5-flash', categories = [], lots = [] }) {
+// Les noms de modèles changent et les anciens sont retirés : plutôt que de les
+// figer dans le code, on demande à Google ce que cette clé peut utiliser.
+const HORS_SUJET = /embedding|aqa|imagen|veo|tts|audio|image-generation|learnlm/i;
+
+export async function listeModeles(cle) {
+  if (!cle) throw new Error('Renseignez une clé API.');
+  const modeles = [];
+  let page = '';
+  // Deux pages suffisent largement ; la boucle évite d'en oublier.
+  for (let i = 0; i < 3; i += 1) {
+    const requete = new URLSearchParams({ key: cle, pageSize: '200' });
+    if (page) requete.set('pageToken', page);
+    let reponse;
+    try {
+      reponse = await fetch(`${RACINE}?${requete}`);
+    } catch {
+      throw new Error('Connexion impossible. Vérifiez le réseau et réessayez.');
+    }
+    if (!reponse.ok) {
+      const detail = await reponse.json().catch(() => ({}));
+      const message = (detail.error && detail.error.message) || `Erreur ${reponse.status}`;
+      throw new Error(reponse.status === 400 || reponse.status === 403 ? `Clé refusée : ${message}` : message);
+    }
+    const donnees = await reponse.json();
+    modeles.push(...(donnees.models || []));
+    page = donnees.nextPageToken || '';
+    if (!page) break;
+  }
+
+  return modeles
+    .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
+    .map((m) => ({
+      id: String(m.name || '').replace(/^models\//, ''),
+      libelle: m.displayName || String(m.name || '').replace(/^models\//, ''),
+      description: m.description || '',
+    }))
+    .filter((m) => m.id && !HORS_SUJET.test(m.id))
+    .sort((a, b) => classe(b) - classe(a) || a.id.localeCompare(b.id));
+}
+
+/** Trie les modèles du plus pertinent au moins pertinent pour notre usage. */
+function classe(modele) {
+  const nom = modele.id;
+  const version = parseFloat((nom.match(/(\d+(?:\.\d+)?)/) || [])[1]) || 0;
+  let note = version * 100;
+  // « flash » : le bon compromis vitesse/précision pour lire un relevé.
+  if (/flash/i.test(nom)) note += 40;
+  if (/pro/i.test(nom)) note += 20;
+  // La pénalité dépasse l'écart flash/pro : pour déchiffrer un relevé, mieux
+  // vaut un « pro » qu'un « flash-lite », plus rapide mais moins précis.
+  if (/lite/i.test(nom)) note -= 30;
+  // Les versions datées, expérimentales ou en aperçu passent derrière les stables.
+  if (/exp|preview|-\d{3,}$/i.test(nom)) note -= 60;
+  return note;
+}
+
+/** Le modèle à proposer par défaut : le mieux classé de la liste. */
+export function modeleRecommande(modeles) {
+  return modeles.length ? modeles[0].id : '';
+}
+
+export async function litReleve({ images, cle, modele, categories = [], lots = [] }) {
   if (!cle) throw new Error("Aucune clé API Gemini enregistrée : ouvrez Réglages pour l'ajouter.");
+  if (!modele) throw new Error('Aucun modèle choisi : ouvrez Réglages → Clé API Gemini pour en sélectionner un.');
   if (!images || !images.length) throw new Error('Aucune photo à analyser.');
 
   const corps = {
@@ -131,6 +193,9 @@ export async function litReleve({ images, cle, modele = 'gemini-2.5-flash', cate
       /* on garde le message générique */
     }
     if (reponse.status === 400 && /API key/i.test(message)) message = 'Clé API refusée. Vérifiez-la dans Réglages.';
+    if (reponse.status === 404 || /not found|not supported|deprecated|retired/i.test(message)) {
+      message = `Le modèle « ${modele} » n'est plus disponible. Ouvrez Réglages → Clé API Gemini pour en choisir un autre dans la liste.`;
+    }
     if (reponse.status === 429) message = 'Quota Gemini atteint. Réessayez dans quelques minutes.';
     throw new Error(message);
   }
@@ -196,8 +261,8 @@ export function categorieDepuisNom(categories, nom) {
   return partielle ? partielle.id : null;
 }
 
-/** Vérifie la clé en un appel minimal, sans consommer d'image. */
-export async function testeCle(cle, modele = 'gemini-2.5-flash') {
+/** Vérifie la clé et le modèle en un appel minimal, sans consommer d'image. */
+export async function testeCle(cle, modele) {
   const reponse = await fetch(`${RACINE}/${encodeURIComponent(modele)}:generateContent?key=${encodeURIComponent(cle)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

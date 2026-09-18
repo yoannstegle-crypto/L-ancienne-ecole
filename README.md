@@ -53,8 +53,13 @@ générale imprimables.
 
 1. Aller sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey) et créer une clé
    (gratuite, quota généreux pour quelques relevés par mois).
-2. Dans l'application : **⚙ Réglages → Clé API Gemini**, coller la clé. Elle est vérifiée
-   immédiatement.
+2. Dans l'application : **⚙ Réglages → Clé API Gemini**, coller la clé.
+3. L'application interroge Google et propose **les modèles réellement disponibles pour cette
+   clé**, le plus adapté étant marqué « recommandé ». Le choix est vérifié dans la foulée.
+
+Aucun nom de modèle n'est figé dans le code : Google en retire régulièrement, et la liste se
+met donc à jour toute seule. Si un modèle enregistré disparaît, l'application le signale et
+renvoie vers ce même écran.
 
 La clé est stockée dans la mémoire du navigateur de l'iPhone, jamais dans le dépôt. Les photos
 partent directement du téléphone vers l'API Google au moment de l'analyse ; rien ne transite par

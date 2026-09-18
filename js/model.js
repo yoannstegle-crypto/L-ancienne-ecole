@@ -71,7 +71,7 @@ export function baseVierge(annee = new Date().getFullYear()) {
       indicatifTelephone: '33',
       exerciceCourant: annee,
       cleGemini: '',
-      modeleGemini: 'gemini-2.5-flash',
+      modeleGemini: '',
       googleClientId: '',
       messageProvision: MODELE_MESSAGE_PROVISION,
       messageGroupe: MODELE_MESSAGE_GROUPE,

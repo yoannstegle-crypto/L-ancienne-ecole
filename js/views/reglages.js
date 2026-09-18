@@ -1,7 +1,7 @@
 // Réglages : identité du syndic, exercices, clé Gemini, modèles de messages,
 // catégories et surtout la sauvegarde des données.
 
-import { testeCle } from '../gemini.js';
+import { listeModeles, modeleRecommande, testeCle } from '../gemini.js';
 import { dateLongue, echappe, euros, montantDepuisTexte, uid } from '../format.js';
 import { anneesConnues, arrondi, exerciceVierge, MODELE_MESSAGE_GROUPE, MODELE_MESSAGE_PROVISION, totaux } from '../model.js';
 import { chargeJeuDemo } from '../demo.js';
@@ -75,6 +75,7 @@ async function ouvreExerciceSuivant(db) {
 async function editeGemini(db) {
   const donnees = await formulaire({
     titre: 'Lecture des relevés (Gemini)',
+    valider: 'Continuer',
     champs: [
       {
         cle: 'cleGemini',
@@ -84,28 +85,73 @@ async function editeGemini(db) {
         placeholder: 'AIza…',
         aide: 'Créez-la gratuitement sur aistudio.google.com/apikey. Elle reste sur ce téléphone.',
       },
+    ],
+  });
+  if (!donnees) return;
+
+  const cle = donnees.cleGemini.trim();
+  maj((d) => {
+    d.parametres.cleGemini = cle;
+  });
+  if (!cle) {
+    toast('Clé effacée');
+    return;
+  }
+
+  toast('Recherche des modèles disponibles…');
+  try {
+    const modeles = await listeModeles(cle);
+    if (!modeles.length) {
+      toast('Aucun modèle utilisable pour cette clé', 'erreur');
+      return;
+    }
+    await choisitModele(db, modeles, cle);
+  } catch (err) {
+    toast(err.message || 'Vérification impossible', 'erreur');
+  }
+}
+
+/**
+ * Google retire régulièrement ses anciens modèles : on propose donc ceux que
+ * la clé peut réellement utiliser aujourd'hui, plutôt qu'une liste figée.
+ */
+async function choisitModele(db, modeles, cle) {
+  const actuel = db.parametres.modeleGemini;
+  const disponible = modeles.some((m) => m.id === actuel);
+  const suggere = modeleRecommande(modeles);
+
+  const donnees = await formulaire({
+    titre: 'Modèle de lecture',
+    valider: 'Enregistrer',
+    champs: [
       {
         cle: 'modeleGemini',
         label: 'Modèle',
         type: 'select',
-        valeur: db.parametres.modeleGemini,
-        options: [
-          { valeur: 'gemini-2.5-flash', label: 'gemini-2.5-flash (rapide, recommandé)' },
-          { valeur: 'gemini-2.5-pro', label: 'gemini-2.5-pro (plus fin, plus lent)' },
-          { valeur: 'gemini-2.0-flash', label: 'gemini-2.0-flash' },
-        ],
+        valeur: disponible ? actuel : suggere,
+        options: modeles.map((m) => ({
+          valeur: m.id,
+          label: m.id === suggere ? `${m.libelle} — recommandé` : m.libelle,
+        })),
       },
     ],
+    apres: `<p class="champ__aide champ__aide--bloc">${modeles.length} modèles proposés par Google pour votre clé.${
+      actuel && !disponible
+        ? ` Le modèle précédemment enregistré (« ${echappe(actuel)} ») n'est plus proposé : il a probablement été retiré.`
+        : ''
+    } En cas de doute, gardez celui marqué « recommandé » : c'est le plus récent adapté à la lecture d'un relevé.</p>`,
   });
   if (!donnees) return;
-  maj((d) => Object.assign(d.parametres, { cleGemini: donnees.cleGemini.trim(), modeleGemini: donnees.modeleGemini }));
-  if (!donnees.cleGemini.trim()) return;
-  toast('Vérification de la clé…');
+
+  maj((d) => {
+    d.parametres.modeleGemini = donnees.modeleGemini;
+  });
+  toast('Vérification du modèle…');
   try {
-    await testeCle(donnees.cleGemini.trim(), donnees.modeleGemini);
-    toast('Clé valide ✓');
+    await testeCle(cle, donnees.modeleGemini);
+    toast('Clé et modèle valides ✓');
   } catch (err) {
-    toast(`Clé refusée : ${err.message}`, 'erreur');
+    toast(`Modèle refusé : ${err.message}`, 'erreur');
   }
 }
 
@@ -402,7 +448,13 @@ export function rendu(conteneur, ctx) {
       <ul class="liste">
         <li class="liste__ligne" data-gemini>
           <div class="liste__principal"><span class="liste__titre">Clé API Gemini</span>
-          <span class="liste__sous">${db.parametres.cleGemini ? `enregistrée (${echappe(db.parametres.modeleGemini)})` : 'non renseignée'}</span></div>
+          <span class="liste__sous">${
+            db.parametres.cleGemini
+              ? db.parametres.modeleGemini
+                ? `enregistrée · ${echappe(db.parametres.modeleGemini)}`
+                : 'clé enregistrée, modèle à choisir'
+              : 'non renseignée'
+          }</span></div>
           <span class="chevron">›</span>
         </li>
       </ul>

@@ -140,7 +140,7 @@ function controleCoherence() {
 export function rendu(conteneur, ctx) {
   const { db, annee, naviguer } = ctx;
   const rafraichir = () => rendu(renouvelle(conteneur), ctx);
-  const sansCle = !db.parametres.cleGemini;
+  const sansCle = !db.parametres.cleGemini || !db.parametres.modeleGemini;
   const coherence = controleCoherence();
   const retenues = etat.lignes.filter((l) => l.garder);
 
@@ -148,8 +148,12 @@ export function rendu(conteneur, ctx) {
     ${
       sansCle
         ? `<section class="carte carte--avertissement">
-            <h2 class="carte__titre">Clé Gemini manquante</h2>
-            <p class="note">La lecture automatique des relevés a besoin d'une clé API Google AI Studio (gratuite). Renseignez-la une fois pour toutes dans les réglages.</p>
+            <h2 class="carte__titre">${db.parametres.cleGemini ? 'Modèle à choisir' : 'Clé Gemini manquante'}</h2>
+            <p class="note">${
+              db.parametres.cleGemini
+                ? "La clé est enregistrée mais aucun modèle n'est sélectionné. Ouvrez les réglages pour en choisir un dans la liste proposée par Google."
+                : "La lecture automatique des relevés a besoin d'une clé API Google AI Studio (gratuite). Renseignez-la une fois pour toutes dans les réglages."
+            }</p>
             <button class="bouton bouton--primaire" data-route="#/reglages">Ouvrir les réglages</button>
           </section>`
         : ''
